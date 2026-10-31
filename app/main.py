@@ -99,9 +99,13 @@ def not_found(request: Request, what: str):
 
 def _users() -> dict[str, str]:
     users = {}
-    for pair in config.AUTH_USERS.split(","):
+    # 한글 입력 상태의 전각 콜론·쉼표, 값 앞뒤 따옴표/공백도 허용
+    raw = config.AUTH_USERS.replace("：", ":").replace("，", ",").strip().strip("\"'`").strip()
+    for pair in raw.replace(";", ",").replace("\n", ",").split(","):
+        pair = pair.strip().strip("\"'`")
         if ":" in pair:
-            u, _, p = pair.strip().partition(":")
+            u, _, p = pair.partition(":")
+            u, p = u.strip(), p.strip()
             if u and p:
                 users[u] = p
     if config.APP_PASSWORD:
@@ -141,7 +145,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if config.REQUIRE_AUTH and not path.startswith(("/healthz", "/static/", "/r/")):
                 return render(request, "message.html", {
                     "title": "관리자 계정 설정이 필요합니다", "public": True,
-                    "message": "서버 환경변수 AUTH_USERS(예: weplatform:비밀번호)를 설정한 뒤 다시 접속하세요."},
+                    "message": ("환경변수 AUTH_USERS 값은 있지만 '아이디:비밀번호' 형식으로 읽히지 않습니다. 콜론(:)으로 아이디와 비밀번호를 나눠 주세요."
+                                if config.AUTH_USERS.strip() else
+                                "서버 환경변수 AUTH_USERS(예: weplatform:비밀번호)가 비어 있습니다. 설정한 뒤 다시 배포하세요.")},
                     status_code=503)
             request.scope["user"] = "local"
             return await call_next(request)

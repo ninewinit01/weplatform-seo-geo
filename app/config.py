@@ -15,7 +15,19 @@ DB_PATH = os.getenv("DB_PATH", str(BASE_DIR / "data" / "app.db"))
 # - 둘 다 비어 있으면 인증 없음(로컬 개발용). 운영 시에는 반드시 설정하세요.
 APP_USER = os.getenv("APP_USER", "weplatform")
 APP_PASSWORD = os.getenv("APP_PASSWORD", "")
-AUTH_USERS = os.getenv("AUTH_USERS", "")
+
+
+def _env_loose(name: str) -> str:
+    """대시보드 입력 실수(키 앞뒤 공백, 소문자)를 허용해 환경변수를 찾습니다."""
+    if os.getenv(name):
+        return os.environ[name]
+    for k, v in os.environ.items():
+        if k.strip().upper() == name:
+            return v
+    return ""
+
+
+AUTH_USERS = _env_loose("AUTH_USERS")
 
 # 로그인 쿠키 서명 키. 지정하지 않으면 계정 정보에서 파생합니다(비밀번호를 바꾸면 기존 로그인 해제).
 if os.getenv("SECRET_KEY"):

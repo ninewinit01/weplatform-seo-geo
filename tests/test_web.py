@@ -187,3 +187,15 @@ def test_require_auth_locks_public_server(server, monkeypatch):
     r = requests.get(server + "/")
     assert r.status_code == 503 and "AUTH_USERS" in r.text
     assert requests.get(server + "/healthz").status_code == 200
+
+
+def test_auth_users_tolerant_parsing(monkeypatch):
+    from app.main import _users
+    monkeypatch.setattr(config, "APP_PASSWORD", "")
+    for raw in ['"kim：pw1"', " kim : pw1 ", "`kim:pw1`", "kim:pw1；".replace("；", ";")]:
+        monkeypatch.setattr(config, "AUTH_USERS", raw)
+        assert _users() == {"kim": "pw1"}, raw
+    monkeypatch.setattr(config, "AUTH_USERS", "kim:pw1，lee:pw2")
+    assert _users() == {"kim": "pw1", "lee": "pw2"}
+    monkeypatch.setattr(config, "AUTH_USERS", "onlypassword")
+    assert _users() == {}
