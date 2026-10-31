@@ -1,0 +1,20 @@
+{% macro score(s, digits=0) -%}
+{%- if s is not none -%}<span class="score {{ s|score_class }}">{{ s|round(digits)|int if digits == 0 else s|round(digits) }}</span>{%- else -%}<span class="muted">-</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro engines_mini(es) -%}
+<span class="mini-scores">{% for key, e in ENGINES.items() %}<span>{{ e.label }} {% if es and key in es %}<b class="score {{ es[key]|score_class }}">{{ es[key]|round(0)|int }}</b>{% else %}<b class="muted">-</b>{% endif %}</span>{% endfor %}</span>
+{%- endmacro %}
+
+{% macro spark(points, w=120, h=32) -%}
+{%- set vals = points | map(attribute='score') | select('number') | list -%}
+{%- if vals|length >= 2 -%}
+{%- set step = (w - 6) / (vals|length - 1) -%}
+<svg class="spark" width="{{ w }}" height="{{ h }}" viewBox="0 0 {{ w }} {{ h }}" role="img" aria-label="점수 추이 {{ vals|join(' → ') }}">
+<path d="{% for v in vals %}{{ 'M' if loop.first else 'L' }}{{ (3 + loop.index0 * step)|round(1) }},{{ (h - 4 - (v / 100) * (h - 8))|round(1) }} {% endfor %}"/>
+{%- set last = vals[-1] -%}<circle cx="{{ (3 + (vals|length - 1) * step)|round(1) }}" cy="{{ (h - 4 - (last / 100) * (h - 8))|round(1) }}" r="3"/>
+<title>{{ vals|join(' → ') }}</title></svg>
+{%- else -%}<span class="muted small">이력 2회 이상부터 표시</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro audit_status(st) -%}<span class="badge {{ st }}">{{ AUDIT_STATUS.get(st, st) }}</span>{%- endmacro %}

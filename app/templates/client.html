@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% from "_macros.html" import score, engines_mini, spark, audit_status %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="/clients">광고주·사이트</a> / {{ client.name }}</div>
+<div class="row between">
+  <div>
+    <h1>{{ client.name }} <span class="badge {{ client.status }}" style="vertical-align:3px">{{ CLIENT_STATUSES.get(client.status, client.status) }}</span></h1>
+    <p class="muted small" style="margin:0">
+      {{ client.industry or '업종 미지정' }} · 담당 {{ client.manager or '-' }}{% if client.contact %} · {{ client.contact }}{% endif %} · 등록 {{ client.created_at|kst('%Y-%m-%d') }}
+    </p>
+    {% if client.memo %}<p style="margin:6px 0 0">{{ client.memo }}</p>{% endif %}
+  </div>
+  {% if sites %}
+  <form class="row" method="post" action="/clients/{{ client.id }}/audit-all">
+    <input type="hidden" name="max_pages" value="{{ default_pages }}">
+    <button type="submit">전체 사이트 진단 ({{ sites|length }})</button>
+  </form>
+  {% endif %}
+</div>
+
+<details class="panel" style="margin-top:16px">
+  <summary>광고주 정보 수정</summary>
+  <div class="body">
+  <form method="post" action="/clients/{{ client.id }}/edit" class="form-grid">
+    <label class="f">광고주명 *<input name="name" required maxlength="100" value="{{ client.name }}"></label>
+    <label class="f">업종<select name="industry"><option value="">선택</option>{% for i in INDUSTRIES %}<option {{ 'selected' if i == client.industry }}>{{ i }}</option>{% endfor %}</select></label>
+    <label class="f">상태<select name="status">{% for k, v in CLIENT_STATUSES.items() %}<option value="{{ k }}" {{ 'selected' if k == client.status }}>{{ v }}</option>{% endfor %}</select></label>
+    <label class="f">담당자<input name="manager" maxlength="50" value="{{ client.manager }}"></label>
+    <label class="f">광고주 연락처<input name="contact" maxlength="120" value="{{ client.contact }}"></label>
+    <label class="f" style="grid-column:1/-1">메모<input name="memo" maxlength="500" value="{{ client.memo }}"></label>
+    <div class="row"><button type="submit">저장</button></div>
+  </form>
+  <form method="post" action="/clients/{{ client.id }}/delete" style="margin-top:14px"
+        onsubmit="return confirm('광고주와 모든 사이트·진단 기록이 삭제됩니다. 계속할까요?')">
+    <button class="danger" type="submit">광고주 삭제</button>
+  </form>
+  </div>
+</details>
+
+<h2>사이트 ({{ sites|length }})</h2>
+<form method="post" action="/clients/{{ client.id }}/sites" class="card form-grid" style="margin-bottom:14px">
+  <label class="f" style="grid-column:span 2">사이트 URL *<input name="url" placeholder="https://example.com" required></label>
+  <label class="f">구분<input name="label" placeholder="공식몰, 블로그 등" maxlength="100"></label>
+  <label class="f">핵심 키워드<input name="keywords" placeholder="쉼표로 구분" maxlength="300"></label>
+  <input type="hidden" name="max_pages" value="{{ default_pages }}">
+  <div class="row"><label class="small row" style="gap:6px"><input type="checkbox" name="run_now" value="1" checked> 추가 후 바로 진단</label><button type="submit">사이트 추가</button></div>
+</form>
+
+{% if sites %}
+<div class="grid">
+{% for s in sites %}
+  <div class="card">
+    <div class="row between" style="align-items:flex-start">
+      <div style="min-width:0;flex:1">
+        <div class="row" style="gap:6px"><strong style="word-break:break-all">{{ s.url }}</strong>{% if s.label %}<span class="chip">{{ s.label }}</span>{% endif %}</div>
+        {% if s.keywords %}<div class="muted small">키워드: {{ s.keywords }}</div>{% endif %}
+        <div class="muted small">진단 {{ s.audit_count }}회 · 마지막 {{ s.last_run|kst }}</div>
+      </div>
+      <div class="row" style="gap:18px">
+        <div style="text-align:center"><div class="muted small">종합</div>
+          {% if s.last_score is not none %}<a href="/audits/{{ s.last_audit_id }}" style="font-size:22px">{{ score(s.last_score) }}</a>
+          {% elif s.last_status %}<a href="/audits/{{ s.last_audit_id }}">{{ audit_status(s.last_status) }}</a>
+          {% else %}<span class="muted">-</span>{% endif %}</div>
+        <div>{{ engines_mini(s.last_engines) }}<div style="margin-top:4px">{{ spark(s.history) }}</div></div>
+      </div>
+    </div>
+    <div class="row between" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+      <form class="row" method="post" action="/sites/{{ s.id }}/audit">
+        <label class="small muted">최대 페이지 <input type="number" name="max_pages" value="{{ default_pages }}" min="1" max="{{ max_pages }}" style="width:76px"></label>
+        <button type="submit" {{ 'disabled' if s.last_status in ('queued','running') }}>{{ '진단 중…' if s.last_status in ('queued','running') else '진단 시작' }}</button>
+        {% if s.last_audit_id %}<a class="btn ghost" href="/audits/{{ s.last_audit_id }}">최근 리포트</a>{% endif %}
+      </form>
+      <details>
+        <summary class="small muted" style="cursor:pointer">수정 · 삭제</summary>
+        <form method="post" action="/sites/{{ s.id }}/edit" class="form-grid" style="margin-top:10px;min-width:280px">
+          <label class="f">URL<input name="url" value="{{ s.url }}" required></label>
+          <label class="f">구분<input name="label" value="{{ s.label }}" maxlength="100"></label>
+          <label class="f">핵심 키워드<input name="keywords" value="{{ s.keywords }}" maxlength="300"></label>
+          <div class="row"><button class="sm" type="submit">저장</button></div>
+        </form>
+        <form method="post" action="/sites/{{ s.id }}/delete" style="margin-top:8px" onsubmit="return confirm('사이트와 진단 기록을 삭제할까요?')">
+          <button class="danger" type="submit">사이트 삭제</button>
+        </form>
+      </details>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% else %}
+<div class="card empty">등록된 사이트가 없습니다. 위에서 URL을 추가하세요.</div>
+{% endif %}
+<p class="muted small">진단은 robots.txt를 준수하며 요청 사이에 간격을 두고 크롤링합니다. 페이지 수가 많을수록 오래 걸립니다(30페이지 기준 약 30초~1분).</p>
+{% endblock %}

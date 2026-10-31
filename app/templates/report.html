@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% from "_macros.html" import score, spark, audit_status %}
+{% block title %}{{ (client.name ~ ' ') if client }}진단 리포트 #{{ audit.id }}{% endblock %}
+{% block head %}{% if running %}<meta http-equiv="refresh" content="3">{% endif %}
+<style>
+.hero{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center}
+@media (max-width:700px){.hero{grid-template-columns:1fr;justify-items:start}}
+.ring{width:128px;height:128px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:conic-gradient(var(--c) calc(var(--p)*1%), var(--line) 0)}
+.ring.good{--c:var(--good)} .ring.mid{--c:var(--mid)} .ring.bad{--c:var(--bad)} .ring.na{--c:var(--line)}
+.ring>span{width:100px;height:100px;border-radius:50%;background:var(--card);display:grid;place-items:center;text-align:center;line-height:1.15}
+.ring b{font-size:32px;font-variant-numeric:tabular-nums} .ring small{font-size:11.5px;color:var(--muted)}
+.hero .cats{width:100%}
+.engines{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+@media (max-width:700px){.engines{grid-template-columns:1fr}}
+.engine{border-top:3px solid var(--ec)} .engine.seo{--ec:var(--e-seo)} .engine.geo{--ec:var(--e-geo)} .engine.naver{--ec:var(--e-naver)}
+.engine .big{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
+.cat{display:grid;grid-template-columns:140px 1fr 40px;gap:10px;align-items:center;font-size:14px}
+@media (max-width:500px){.cat{grid-template-columns:96px 1fr 32px}}
+.finding{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--card)}
+.finding .head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
+.finding .fix{margin:8px 0 0;padding:8px 12px;background:var(--brand-weak);border-radius:8px;font-size:14px}
+.finding details{margin-top:8px;font-size:13px} .finding summary{cursor:pointer;color:var(--muted)}
+.finding ul{margin:6px 0 0;padding-left:18px;word-break:break-all}
+.tag{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button{background:var(--card);color:var(--text);border-color:var(--line);font-weight:500}
+.tabs button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.manual-item{display:flex;gap:12px;align-items:flex-start}
+.manual-item input{margin-top:5px;width:18px;height:18px;flex:none}
+.manual-item.done h3{text-decoration:line-through;color:var(--muted)}
+.share{background:var(--soft);border:1px dashed var(--line);border-radius:10px;padding:12px 14px}
+.share input{flex:1;min-width:200px;font-size:13px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:s 1s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes s{to{transform:rotate(360deg)}}
+.report-head{border-bottom:3px solid var(--navy);padding-bottom:12px;margin-bottom:6px}
+.trend-big svg{max-width:100%;height:auto}
+.trend-big .spark path{stroke-width:2.5}
+@media print{.finding{break-inside:avoid}.tabs{display:none}.finding[hidden]{display:block!important}}
+</style>
+{% endblock %}
+{% block content %}
+{% if not public %}
+<div class="crumbs no-print"><a href="/clients">광고주·사이트</a> / {% if client %}<a href="/clients/{{ client.id }}">{{ client.name }}</a> / {% endif %}진단 #{{ audit.id }}</div>
+{% endif %}
+
+<div class="report-head row between" style="align-items:flex-end">
+  <div style="min-width:0">
+    <div class="muted small">{{ BRAND }} SEO·GEO 진단 리포트{% if client %} · {{ client.name }}{% if client.industry %} ({{ client.industry }}){% endif %}{% endif %}</div>
+    <h1 style="word-break:break-all">{{ site.url if site else '(삭제된 사이트)' }}</h1>
+    <p class="muted small" style="margin:0">{{ audit.created_at|kst }} 진단 · {{ audit.pages_crawled }}개 페이지 분석(최대 {{ audit.max_pages }}){% if site and site.label %} · {{ site.label }}{% endif %}</p>
+  </div>
+  {% if audit.status == 'done' %}
+  <div class="row no-print">
+    <button class="subtle" type="button" onclick="window.print()">PDF 저장 / 인쇄</button>
+    {% if not public %}<a class="btn subtle" href="/audits/{{ audit.id }}/export.csv">CSV</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% if not public and audit.status == 'done' %}
+<div class="share row no-print" style="margin-top:12px">
+  {% if share_url %}
+    <strong class="small">외부 공유 링크</strong>
+    <input id="share-url" value="{{ share_url }}" readonly onclick="this.select()">
+    <button class="sm" type="button" id="copy-share">복사</button>
+    <a class="btn sm ghost" href="{{ share_url }}" target="_blank" rel="noopener">열기</a>
+    <form class="inline" method="post" action="/audits/{{ audit.id }}/unshare" onsubmit="return confirm('공유를 해제하면 기존 링크로는 열 수 없습니다.')"><button class="danger" type="submit">공유 해제</button></form>
+  {% else %}
+    <span class="small muted" style="flex:1">광고주에게 보낼 수 있는 로그인 없는 읽기 전용 링크를 만듭니다.</span>
+    <form class="inline" method="post" action="/audits/{{ audit.id }}/share"><button class="sm" type="submit">외부 공유 링크 만들기</button></form>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if running %}
+<div class="card" style="margin-top:16px"><span class="spin"></span>진단 {{ '대기' if audit.status == 'queued' else '진행' }} 중입니다. 크롤링 → SEO·GEO·네이버 점검 순서로 진행되며 이 화면은 자동으로 새로고침됩니다.</div>
+{% elif audit.status == 'failed' %}
+<div class="alert error" style="margin-top:16px"><strong>진단 실패</strong><br>{{ audit.error }}</div>
+{% if not public and site %}<form method="post" action="/sites/{{ site.id }}/audit"><input type="hidden" name="max_pages" value="{{ audit.max_pages }}"><button type="submit">다시 진단</button></form>{% endif %}
+{% else %}
+
+<div class="card hero" style="margin-top:16px">
+  <div class="ring {{ audit.score|score_class }}" style="--p:{{ audit.score or 0 }}"><span><span><b>{{ audit.score|round(0)|int if audit.score is not none else '-' }}</b><br><small>종합 점수<br>{{ audit.score|grade }}등급</small></span></span></div>
+  <div class="cats">
+    <div class="row" style="gap:6px">
+      <span class="badge fail">문제 {{ counts.fail }}</span><span class="badge warn">개선 권장 {{ counts.warn }}</span><span class="badge pass">통과 {{ counts.pass }}</span>
+      {% if delta is not none %}<span class="small" style="margin-left:6px">이전 진단({{ prev.created_at|kst('%Y-%m-%d') }}) 대비
+        <strong class="score {{ 'good' if delta > 0 else ('bad' if delta < 0 else 'na') }}">{{ '+' if delta > 0 }}{{ delta }}점</strong></span>{% endif %}
+    </div>
+    <div class="grid" style="gap:8px;margin-top:14px">
+      {% for key, label, s, w in cats %}
+      <div class="cat"><span>{{ label }}</span><div class="bar"><i class="{{ s|score_class }}" style="width:{{ s }}%"></i></div>{{ score(s) }}</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="engines">
+{% for key, e in ENGINES.items() %}
+  {% set s = audit.engine_scores.get(key) %}
+  <div class="card engine {{ key }}">
+    <div class="row between"><strong>{{ e.label }}</strong>{% if key in engine_delta %}<span class="small score {{ 'good' if engine_delta[key] > 0 else ('bad' if engine_delta[key] < 0 else 'na') }}">{{ '+' if engine_delta[key] > 0 }}{{ engine_delta[key] }}</span>{% endif %}</div>
+    <div class="big score {{ s|score_class }}">{{ s|round(0)|int if s is not none else '-' }}</div>
+    <div class="muted small">{{ e.desc }}</div>
+    <div class="small" style="margin-top:6px">문제 {{ engine_counts[key].fail }} · 개선 권장 {{ engine_counts[key].warn }}</div>
+  </div>
+{% endfor %}
+</div>
+
+{% if quick_wins %}
+<h2>먼저 손볼 것 (중요도 높은 순)</h2>
+<div class="card"><ol style="margin:0;padding-left:20px" class="grid">
+{% for f in quick_wins %}<li><strong>{{ f.title }}</strong> <span class="chip {{ f.engine }}">{{ ENGINES[f.engine].label }}</span> <span class="muted small">— {{ f.message }}</span></li>{% endfor %}
+</ol></div>
+{% endif %}
+
+<h2>우선 개선 항목 ({{ todo|length }})</h2>
+<div class="tabs" role="tablist">
+  <button type="button" class="on" data-f="all">전체 {{ todo|length }}</button>
+  {% for key, e in ENGINES.items() %}<button type="button" data-f="{{ key }}">{{ e.label }} {{ engine_counts[key].fail + engine_counts[key].warn }}</button>{% endfor %}
+</div>
+<div class="grid" id="todo">
+{% for f in todo %}
+  <div class="finding" data-engine="{{ f.engine }}">
+    <div class="head">
+      <span class="badge {{ f.status }}">{{ STATUS_LABELS[f.status] }}</span>
+      <h3>{{ f.title }}</h3>
+      <span class="chip {{ f.engine }}">{{ ENGINES[f.engine].label }}</span>
+      <span class="tag">{{ CATEGORY_LABELS.get(f.category, f.category) }} · 중요도 {{ f.severity }}</span>
+    </div>
+    <div class="muted">{{ f.message }}</div>
+    {% if f.fix %}<div class="fix"><strong>개선 방법</strong> · {{ f.fix }}</div>{% endif %}
+    {% if f.urls %}<details><summary>대상 URL {{ f.urls|length }}개</summary><ul>{% for u in f.urls[:30] %}<li>{{ u }}</li>{% endfor %}{% if f.urls|length > 30 %}<li class="muted">외 {{ f.urls|length - 30 }}개</li>{% endif %}</ul></details>{% endif %}
+  </div>
+{% else %}
+  <div class="card muted">개선이 필요한 자동 진단 항목이 없습니다.</div>
+{% endfor %}
+</div>
+
+<h2>수동 확인 항목 ({{ manual|length }})</h2>
+<p class="muted small" style="margin-top:-6px">자동으로 확인할 수 없는 항목입니다. 점수에는 반영되지 않습니다.{% if not public %} 확인을 마친 항목은 체크해 두세요.{% endif %}</p>
+<div class="grid">
+{% for f in manual %}
+  <div class="finding manual-item {{ 'done' if f.checked }}">
+    {% if public %}<span class="badge {{ 'pass' if f.checked else 'manual' }}" style="margin-top:2px">{{ '확인 완료' if f.checked else '확인 필요' }}</span>
+    {% else %}<input type="checkbox" data-id="{{ f.id }}" {{ 'checked' if f.checked }} aria-label="{{ f.title }} 확인 완료">{% endif %}
+    <div><div class="head"><h3>{{ f.title }}</h3><span class="chip {{ f.engine }}">{{ ENGINES[f.engine].label }}</span></div>
+    <div class="muted small">{{ f.fix }}</div></div>
+  </div>
+{% endfor %}
+</div>
+
+<h2>통과 항목 ({{ passed|length }})</h2>
+<div class="card" style="padding:0"><div class="table-wrap">
+  <table><tbody>
+  {% for f in passed %}
+    <tr><td style="width:96px"><span class="badge {{ f.status }}">{{ STATUS_LABELS[f.status] }}</span></td>
+        <td><strong>{{ f.title }}</strong> <span class="chip {{ f.engine }}">{{ ENGINES[f.engine].label }}</span><br><span class="muted small">{{ f.message }}</span></td></tr>
+  {% endfor %}
+  </tbody></table>
+</div></div>
+
+{% if pages %}
+<h2>페이지별 현황 ({{ pages|length }})</h2>
+<details class="panel">
+  <summary>수집한 페이지 목록 보기 (문제 많은 순)</summary>
+  <div class="body table-wrap">
+  <table><thead><tr><th>URL</th><th>응답</th><th>title</th><th>본문</th><th>속도</th><th>문제</th></tr></thead><tbody>
+  {% for p in pages %}
+    <tr><td class="small" style="word-break:break-all;max-width:340px">{{ p.url }}</td>
+        <td>{% if p.status == 200 %}<span class="badge pass">200</span>{% else %}<span class="badge fail">{{ p.status or '오류' }}</span>{% endif %}</td>
+        <td class="small">{{ p.title[:40] or '-' }}</td>
+        <td class="small num">{{ "{:,}".format(p.chars) }}자</td>
+        <td class="small num">{{ (p.elapsed_ms / 1000)|round(1) }}초</td>
+        <td class="num">{% if p.issues %}<span class="score bad">{{ p.issues }}</span>{% else %}<span class="muted">0</span>{% endif %}</td></tr>
+  {% endfor %}</tbody></table>
+  </div>
+</details>
+{% endif %}
+
+{% if audit.notes %}
+<h2>진단 메모</h2>
+<div class="card small"><ul style="margin:0;padding-left:18px">{% for n in audit.notes %}<li>{{ n }}</li>{% endfor %}</ul></div>
+{% endif %}
+{% endif %}
+
+{% if trend|length > 1 %}
+<h2>점수 추이</h2>
+<div class="card trend-big">{{ spark(trend, 640, 90) }}
+  <div class="muted small" style="margin-top:6px">{{ trend[0].created_at|kst('%Y-%m-%d') }} → {{ trend[-1].created_at|kst('%Y-%m-%d') }} · {{ trend|length }}회</div></div>
+{% endif %}
+
+{% if history|length > 1 %}
+<h2>진단 이력</h2>
+<div class="card" style="padding:0"><div class="table-wrap"><table>
+  <thead><tr><th>실행 시각</th><th>상태</th><th>종합</th><th>SEO</th><th>GEO</th><th>네이버</th><th>페이지</th></tr></thead><tbody>
+  {% for h in history %}
+    <tr><td><a href="/audits/{{ h.id }}">{{ h.created_at|kst }}</a>{% if h.id == audit.id %} <span class="tag">(현재)</span>{% endif %}</td>
+        <td>{{ audit_status(h.status) }}</td>
+        <td>{{ score(h.score, 1) }}</td>
+        {% for key in ENGINES %}<td>{{ score(h.engine_scores.get(key)) }}</td>{% endfor %}
+        <td class="num">{{ h.pages_crawled }}</td></tr>
+  {% endfor %}</tbody></table></div></div>
+{% endif %}
+
+<p class="muted small" style="margin-top:28px">본 리포트는 정적 HTML 기준 자동 진단 결과입니다. GEO 항목은 업계 표준이 확립되지 않은 영역으로 경험칙 기반 기준을 사용합니다. · {{ BRAND }}</p>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.tabs button').forEach(function (b) {
+  b.addEventListener('click', function () {
+    document.querySelectorAll('.tabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
+    var f = b.dataset.f;
+    document.querySelectorAll('#todo .finding').forEach(function (el) { el.hidden = f !== 'all' && el.dataset.engine !== f; });
+  });
+});
+var copyBtn = document.getElementById('copy-share');
+if (copyBtn) copyBtn.addEventListener('click', function () {
+  var input = document.getElementById('share-url');
+  input.select();
+  (navigator.clipboard ? navigator.clipboard.writeText(input.value) : Promise.reject())
+    .then(function () { copyBtn.textContent = '복사됨'; })
+    .catch(function () { document.execCommand('copy'); copyBtn.textContent = '복사됨'; });
+});
+document.querySelectorAll('.manual-item input[type=checkbox]').forEach(function (cb) {
+  cb.addEventListener('change', function () {
+    var item = cb.closest('.manual-item');
+    item.classList.toggle('done', cb.checked);
+    fetch('/findings/' + cb.dataset.id + '/check', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({checked: cb.checked})}).then(function (r) { if (!r.ok) throw r; })
+      .catch(function () { cb.checked = !cb.checked; item.classList.toggle('done', cb.checked); alert('저장하지 못했습니다. 다시 시도하세요.'); });
+  });
+});
+</script>
+{% endblock %}

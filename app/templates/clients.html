@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import score, engines_mini %}
+{% block title %}광고주·사이트{% endblock %}
+{% block content %}
+<div class="row between" style="margin-bottom:14px">
+  <div><h1>광고주·사이트</h1><p class="muted" style="margin:0">광고주를 등록하고 사이트별로 SEO·GEO 진단을 실행합니다.</p></div>
+</div>
+
+<details class="panel" id="new" {% if not clients and not q and not industry and not status %}open{% endif %}>
+  <summary>광고주 추가</summary>
+  <div class="body">
+  <form method="post" action="/clients" class="form-grid">
+    <label class="f">광고주명 *<input name="name" required maxlength="100" placeholder="예: 위플랫폼 뷰티"></label>
+    <label class="f">업종<select name="industry"><option value="">선택</option>{% for i in INDUSTRIES %}<option>{{ i }}</option>{% endfor %}</select></label>
+    <label class="f">상태<select name="status">{% for k, v in CLIENT_STATUSES.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+    <label class="f">담당자<input name="manager" maxlength="50" placeholder="내부 담당 AE"></label>
+    <label class="f">광고주 연락처<input name="contact" maxlength="120" placeholder="이메일 또는 전화"></label>
+    <label class="f" style="grid-column:1/-1">메모<input name="memo" maxlength="500" placeholder="계약 범위, 주요 키워드 등"></label>
+    <div><button type="submit">광고주 추가</button></div>
+  </form>
+  </div>
+</details>
+
+<form method="get" class="row" style="margin:16px 0 12px">
+  <input name="q" value="{{ q }}" placeholder="광고주명·메모·담당자 검색" style="flex:1;min-width:180px">
+  <select name="industry"><option value="">전체 업종</option>{% for i in INDUSTRIES %}<option {{ 'selected' if i == industry }}>{{ i }}</option>{% endfor %}</select>
+  <select name="status"><option value="">전체 상태</option>{% for k, v in CLIENT_STATUSES.items() %}<option value="{{ k }}" {{ 'selected' if k == status }}>{{ v }}</option>{% endfor %}</select>
+  <button class="subtle" type="submit">검색</button>
+  {% if q or industry or status %}<a class="btn subtle" href="/clients">초기화</a>{% endif %}
+</form>
+
+<div class="card" style="padding:0"><div class="table-wrap">
+  {% if clients %}
+  <table>
+    <thead><tr><th>광고주</th><th>업종</th><th>상태</th><th>담당자</th><th>사이트</th><th>최근 종합</th><th>엔진 점수</th><th>마지막 진단</th></tr></thead>
+    <tbody>
+    {% for c in clients %}
+      <tr>
+        <td><a href="/clients/{{ c.id }}"><strong>{{ c.name }}</strong></a>{% if c.memo %}<br><span class="muted small">{{ c.memo[:40] }}</span>{% endif %}</td>
+        <td class="small">{{ c.industry or '-' }}</td>
+        <td><span class="badge {{ c.status }}">{{ CLIENT_STATUSES.get(c.status, c.status) }}</span></td>
+        <td class="small">{{ c.manager or '-' }}</td>
+        <td class="num">{{ c.site_count }}</td>
+        <td>{{ score(c.last_score) }}</td>
+        <td>{{ engines_mini(c.last_engines) }}</td>
+        <td class="muted small">{{ c.last_run|kst('%Y-%m-%d') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">{% if q or industry or status %}조건에 맞는 광고주가 없습니다.{% else %}아직 등록된 광고주가 없습니다. 위에서 추가해 주세요.{% endif %}</div>
+  {% endif %}
+</div></div>
+{% endblock %}

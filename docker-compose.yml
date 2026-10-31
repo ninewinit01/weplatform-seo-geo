@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/srv/data   # SQLite DB 보존 (백업 대상)

@@ -1,0 +1,23 @@
+# Render Blueprint — 위플랫폼 SEO·GEO 진단 센터
+services:
+  - type: web
+    name: weplatform-seo-geo
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: AUTH_USERS          # "아이디:비밀번호" (쉼표로 여러 명) — 대시보드에서 직접 입력
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DB_PATH
+        value: /srv/data/app.db
+      - key: MAX_CONCURRENT_AUDITS
+        value: "1"
+    # 유료 플랜(starter 이상)으로 바꾸면 아래 디스크를 켜서 데이터를 영구 보존하세요.
+    # disk:
+    #   name: data
+    #   mountPath: /srv/data
+    #   sizeGB: 1

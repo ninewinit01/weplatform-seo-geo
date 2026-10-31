@@ -1,0 +1,15 @@
+# Render 무료 플랜은 15분간 요청이 없으면 잠듭니다. 10분마다 /healthz를 호출해 깨어 있게 합니다.
+# (공개 저장소에서 60일간 커밋이 없으면 GitHub가 예약 실행을 멈추니, 가끔 Actions 탭에서 다시 켜 주세요.)
+name: keepalive
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: curl -fsS --retry 3 --retry-delay 20 --max-time 90 "${APP_URL:-https://weplatform-seo-geo.onrender.com}/healthz"
+        env:
+          APP_URL: ${{ vars.APP_URL }}

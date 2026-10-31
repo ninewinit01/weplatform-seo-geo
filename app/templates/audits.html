@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import score, engines_mini, audit_status %}
+{% block title %}진단 리포트{% endblock %}
+{% block content %}
+<h1>진단 리포트</h1>
+<p class="muted">모든 광고주의 진단 이력입니다. 행을 눌러 리포트를 엽니다.</p>
+<div class="row" style="margin-bottom:12px">
+  {% for k, v in [('', '전체')] + AUDIT_STATUS.items()|list %}
+    <a class="btn sm {{ '' if status == k else 'subtle' }}" href="/audits{{ '?status=' ~ k if k }}">{{ v }}</a>
+  {% endfor %}
+</div>
+<div class="card" style="padding:0"><div class="table-wrap">
+{% if audits %}
+<table><thead><tr><th>#</th><th>광고주 / 사이트</th><th>상태</th><th>종합</th><th>엔진 점수</th><th>페이지</th><th>실행 시각</th></tr></thead><tbody>
+{% for a in audits %}
+<tr>
+  <td class="muted num"><a href="/audits/{{ a.id }}">{{ a.id }}</a></td>
+  <td><a href="/audits/{{ a.id }}"><strong>{{ a.client_name }}</strong></a>{% if a.industry %} <span class="chip">{{ a.industry }}</span>{% endif %}<br><span class="muted small">{{ a.label ~ ' · ' if a.label }}{{ a.url }}</span></td>
+  <td>{{ audit_status(a.status) }}</td>
+  <td>{{ score(a.score) }}</td>
+  <td>{{ engines_mini(a.engine_scores) }}</td>
+  <td class="num">{{ a.pages_crawled }}</td>
+  <td class="muted small">{{ a.created_at|kst }}</td>
+</tr>
+{% endfor %}</tbody></table>
+{% else %}<div class="empty">진단 기록이 없습니다.</div>{% endif %}
+</div></div>
+{% endblock %}

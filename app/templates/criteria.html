@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}진단 기준{% endblock %}
+{% block content %}
+<h1>진단 기준</h1>
+<p class="muted">종합 점수는 분류별 점수를 가중 평균한 값입니다. 각 항목은 통과 100% · 개선 권장 50% · 문제 0%로 계산하며, 수동 확인 항목은 점수에 넣지 않습니다.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+{% for key, e in ENGINES.items() %}
+  <div class="card">
+    <span class="chip {{ key }}">{{ e.label }}</span>
+    <p class="small" style="margin:8px 0">{{ e.desc }}</p>
+    {% for c in e.categories %}<div class="row between small"><span>{{ CATEGORY_LABELS[c] }}</span><span class="muted">종합 반영 {{ weights[c] }}%</span></div>{% endfor %}
+  </div>
+{% endfor %}
+</div>
+
+<h2>페이지 단위 자동 점검 ({{ items|length }})</h2>
+<p class="muted small" style="margin-top:-6px">수집한 모든 페이지에 적용 후 집계합니다. 실패 페이지 비율이 30% 이상이면 '문제', 미만이면 '개선 권장'입니다. 이 밖에 robots.txt·사이트맵·AI 봇 허용·Yeti 접근·프레임 구조 등 사이트 단위 항목이 리포트에 함께 나옵니다.</p>
+<div class="card" style="padding:0"><div class="table-wrap"><table>
+<thead><tr><th>엔진</th><th>분류</th><th>항목</th><th>가중치</th><th>개선 방법</th></tr></thead><tbody>
+{% for i in items %}
+<tr><td><span class="chip {{ CATEGORY_ENGINE[i.category] }}">{{ ENGINES[CATEGORY_ENGINE[i.category]].label }}</span></td>
+    <td class="small">{{ CATEGORY_LABELS[i.category] }}</td><td><strong>{{ i.title }}</strong></td>
+    <td class="num">{{ i.weight }}</td><td class="small muted">{{ i.fix }}</td></tr>
+{% endfor %}</tbody></table></div></div>
+
+<h2>알아둘 점</h2>
+<div class="card small"><ul style="margin:0;padding-left:18px">
+  <li>JS를 실행하지 않는 <b>정적 HTML 기준</b> 진단입니다. 홈 본문이 거의 없으면 'JS 렌더링 의존' 경고가 뜨며 다른 항목이 과소평가될 수 있습니다.</li>
+  <li>크롤러(WeplatformSEOBot)는 robots.txt를 준수하고 요청 사이 0.5초 대기하며, 내부망 주소는 차단합니다.</li>
+  <li>GEO 기준은 아직 업계 표준이 없습니다. 가중치는 <code>app/audit/engines/*.py</code>에서 팀 경험에 맞게 조정하세요.</li>
+</ul></div>
+{% endblock %}

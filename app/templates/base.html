@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>{% block title %}{{ APP_NAME }}{% endblock %} · {{ BRAND }}</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css?v=3">
+{% block head %}{% endblock %}
+</head>
+<body>
+{% set icons = {
+  'dashboard': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+  'clients': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M9 17h6"/></svg>',
+  'audits': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 14l2 2 4-4"/></svg>',
+  'criteria': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8 11h6M11 8v6"/></svg>',
+  'settings': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>'} %}
+{% set menu = [('dashboard','/','대시보드'),('clients','/clients','광고주·사이트'),('audits','/audits','진단 리포트'),('criteria','/criteria','진단 기준'),('settings','/settings','설정·백업')] %}
+{% if public %}
+  <div class="main"><div class="in">{% block public_content %}{{ self.content() }}{% endblock %}</div></div>
+{% else %}
+<div class="topbar"><b>{{ BRAND }} SEO·GEO</b>{% for key, href, label in menu %}<a href="{{ href }}" class="{{ 'on' if nav == key }}">{{ label }}</a>{% endfor %}</div>
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><b>{{ BRAND }}</b><span>{{ APP_NAME }}</span></div>
+    <nav>{% for key, href, label in menu %}<a href="{{ href }}" class="{{ 'on' if nav == key }}">{{ icons[key]|safe }}{{ label }}</a>{% endfor %}</nav>
+    <div class="foot">{% if user and user != 'local' %}{{ user }} · <a href="/logout">로그아웃</a>{% else %}로컬 모드 (로그인 없음){% endif %}</div>
+  </aside>
+  <div class="main"><div class="in">
+    {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+    {% if notice %}<div class="alert notice">{{ notice }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </div></div>
+</div>
+{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>
