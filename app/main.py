@@ -108,6 +108,11 @@ def _users() -> dict[str, str]:
             u, p = u.strip(), p.strip()
             if u and p:
                 users[u] = p
+        elif len(pair.split()) == 2:          # "아이디 비밀번호" (공백 구분)
+            u, p = pair.split()
+            users[u] = p
+        elif pair and " " not in pair and "," not in raw:   # 비밀번호만 입력 → 기본 아이디(APP_USER)
+            users[config.APP_USER] = pair
     if config.APP_PASSWORD:
         users.setdefault(config.APP_USER, config.APP_PASSWORD)
     return users

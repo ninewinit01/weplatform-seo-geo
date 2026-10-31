@@ -197,5 +197,9 @@ def test_auth_users_tolerant_parsing(monkeypatch):
         assert _users() == {"kim": "pw1"}, raw
     monkeypatch.setattr(config, "AUTH_USERS", "kim:pw1，lee:pw2")
     assert _users() == {"kim": "pw1", "lee": "pw2"}
+    monkeypatch.setattr(config, "AUTH_USERS", "kim pw1")
+    assert _users() == {"kim": "pw1"}
     monkeypatch.setattr(config, "AUTH_USERS", "onlypassword")
+    assert _users() == {config.APP_USER: "onlypassword"}
+    monkeypatch.setattr(config, "AUTH_USERS", "a b c")
     assert _users() == {}
